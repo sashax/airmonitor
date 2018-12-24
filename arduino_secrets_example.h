@@ -1,0 +1,5 @@
+#define SECRET_SSID ""
+#define SECRET_PASS ""
+#define AIRNOW_API_CALL "GET /aq/observation/zipCode/current/?format=text/csv&zipCode=<zip>&distance=25&API_KEY=<api_key"
+#define AIRNOW_HOST "host: http://www.airnowapi.org"
+#define ERROR_NOT_PRESENT "WiFi shield not present"
