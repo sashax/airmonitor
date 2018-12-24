@@ -17,6 +17,7 @@
 
 #include <SPI.h>
 #include <WiFi101.h>
+#include <string.h>
 #include "arduino_secrets.h" 
 
 ///////please enter your sensitive data in the Secret tab/arduino_secrets.h
@@ -28,7 +29,7 @@ int status = WL_IDLE_STATUS;
 
 // if you don't want to use DNS (and reduce your sketch size)
 // use the numeric IP instead of the name for the server:
-char server[] = "www.google.com";    // name address for Google (using DNS)
+char server[] = "www.airnowapi.org";    // name address for Google (using DNS)
 
 // Initialize the Ethernet client library
 // with the IP address and port of the server
@@ -50,7 +51,7 @@ void setup() {
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
-  Serial.println("Starting sketch");
+  Serial.println("Starting");
 
   // check for the presence of the shield:
   if (WiFi.status() == WL_NO_SHIELD) {
@@ -58,7 +59,7 @@ void setup() {
     // don't continue:
     while (true);
   }
-  Serial.print("Attempting to connect to SSID: ");
+  Serial.print("Attempting SSID: ");
   Serial.println(ssid);
   // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
     
@@ -74,18 +75,17 @@ void setup() {
   }
 
   Serial.println();
-  Serial.println();
-  Serial.println("Connected to wifi");
+  Serial.println("Connected");
   printWiFiStatus();
 
-  Serial.println("\nStarting connection to server...");
+  Serial.println("\nStarting connex");
   // if you get a connection, report back via serial:
   if (client.connect(server, 80)) {
-    Serial.println("connected to server");
+    Serial.println("connex");
     // Make a HTTP request:
-    client.println("GET /search?q=arduino HTTP/1.1");
-    client.println("Host: www.google.com");
-    client.println("Connection: close");
+    client.println(AIRNOW_API_CALL);
+    client.println(AIRNOW_HOST);
+    client.println("Cnx: close");
     client.println();
   }
 }
@@ -93,15 +93,31 @@ void setup() {
 void loop() {
   // if there are incoming bytes available
   // from the server, read them and print them:
+  int linecount = 0;
+  int fieldcount = 0;
   while (client.available()) {
     char c = client.read();
-    Serial.write(c);
+    if (linecount == 2) {
+      if (c == ',') {
+        fieldcount++;
+      } else if (fieldcount == 9) {
+        if (c != '\"') {
+          //making assumption here that we have only one digit
+          Serial.write(c);
+          c-= 48;
+          displayValue(c);
+        }
+      }
+    }
+    if (c == '\n') {
+      linecount++;
+    }
   }
 
   // if the server's disconnected, stop the client:
   if (!client.connected()) {
     Serial.println();
-    Serial.println("disconnecting from server.");
+    Serial.println("discon");
     client.stop();
 
     // do nothing forevermore:
@@ -109,6 +125,14 @@ void loop() {
   }
 }
 
+//currently just prints the color corresponding to airquality
+void displayValue(int val) {
+  char color[7];
+  char* str = "green yelloworangered   purple";
+  strncpy(color, str + ((val -1) *6), 6);
+  color[6] = '\0';
+  Serial.println(color);
+}
 
 void printWiFiStatus() {
   // print the SSID of the network you're attached to:
