@@ -18,7 +18,10 @@
 #include <SPI.h>
 #include <WiFi101.h>
 #include <string.h>
+#include <Adafruit_NeoPixel.h>
 #include "arduino_secrets.h" 
+
+#define PIN 6
 
 ///////please enter your sensitive data in the Secret tab/arduino_secrets.h
 char ssid[] = SECRET_SSID;        // your network SSID (name)
@@ -36,8 +39,17 @@ char server[] = "www.airnowapi.org";    // name address for Google (using DNS)
 // that you want to connect to (port 80 is default for HTTP):
 WiFiClient client;
 
+//Define the NeoPixel(s)
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(8, PIN);
+
 void setup() {
   pinMode(2, OUTPUT);
+
+  // for pixel
+  strip.begin();
+  strip.setBrightness(50);
+  strip.show(); // Initialize all pixels to 'off'
+  
   for (int j = 0; j < 3; j++) {
     digitalWrite(2, LOW);
     delay(100);
@@ -128,10 +140,21 @@ void loop() {
 //currently just prints the color corresponding to airquality
 void displayValue(int val) {
   char color[7];
+  uint32_t colors[5] = { 
+    strip.Color(0x00, 0xff, 0x00), //green
+    strip.Color(0xff, 0xFF, 0x55), //yellow
+    strip.Color(0xef, 0x85, 0x33), //orange
+    strip.Color(0xea, 0x00, 0x00), //red
+    strip.Color(0x8c, 0x1a, 0x4b) //purple
+  };
   char* str = "green yelloworangered   purple";
   strncpy(color, str + ((val -1) *6), 6);
   color[6] = '\0';
   Serial.println(color);
+  for (int i = 0; i < 8; i++) {
+    strip.setPixelColor(i, colors[val -1]);
+  }
+  strip.show();
 }
 
 void printWiFiStatus() {
