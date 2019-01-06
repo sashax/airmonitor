@@ -20,6 +20,7 @@
 #include <string.h>
 #include <Adafruit_NeoPixel.h>
 #include "arduino_secrets.h" 
+#include "MSTimer.h"
 
 #define PIN 6
 
@@ -39,6 +40,8 @@ char server[] = "www.airnowapi.org";    // name address for Google (using DNS)
 // that you want to connect to (port 80 is default for HTTP):
 WiFiClient client;
 
+MSTimer timer;
+
 //Define the NeoPixel(s)
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(8, PIN);
 
@@ -47,9 +50,10 @@ void setup() {
 
   // for pixel
   strip.begin();
-  strip.setBrightness(50);
+  strip.setBrightness(30);
   strip.show(); // Initialize all pixels to 'off'
-  
+
+  //flash LED as wakeup 
   for (int j = 0; j < 3; j++) {
     digitalWrite(2, LOW);
     delay(100);
@@ -90,50 +94,54 @@ void setup() {
   Serial.println("Connected");
   printWiFiStatus();
 
+  timer.setTimer(3000);
+}
+
+void getQuality() {
   Serial.println("\nStarting connex");
+  client.stop();
+  client.flush();
+  delay(500);
   // if you get a connection, report back via serial:
   if (client.connect(server, 80)) {
     Serial.println("connex");
     // Make a HTTP request:
     client.println(AIRNOW_API_CALL);
-    client.println(AIRNOW_HOST);
-    client.println("Cnx: close");
     client.println();
+    timer.setTimer(1000L * 60L * 2L);
+  } else {
+     Serial.println("connex failed");
+     timer.setTimer(1000L * 30L );
   }
 }
 
 void loop() {
+  int linecount = 0;
+  int fieldcount = 0;   
   // if there are incoming bytes available
   // from the server, read them and print them:
-  int linecount = 0;
-  int fieldcount = 0;
   while (client.available()) {
     char c = client.read();
+    Serial.write(c);
     if (linecount == 2) {
       if (c == ',') {
         fieldcount++;
       } else if (fieldcount == 9) {
         if (c != '\"') {
           //making assumption here that we have only one digit
-          Serial.write(c);
           c-= 48;
           displayValue(c);
-        }
+          break;
+          }
       }
     }
     if (c == '\n') {
       linecount++;
     }
   }
-
-  // if the server's disconnected, stop the client:
-  if (!client.connected()) {
-    Serial.println();
-    Serial.println("discon");
-    client.stop();
-
-    // do nothing forevermore:
-    while (true);
+  if (timer.isExpired()) {
+    Serial.println("timer exp");
+    getQuality();
   }
 }
 
@@ -142,15 +150,17 @@ void displayValue(int val) {
   char color[7];
   uint32_t colors[5] = { 
     strip.Color(0x00, 0xff, 0x00), //green
-    strip.Color(0xff, 0xFF, 0x55), //yellow
+    strip.Color(0xff, 0xee, 0x00), //yellow
     strip.Color(0xef, 0x85, 0x33), //orange
     strip.Color(0xea, 0x00, 0x00), //red
-    strip.Color(0x8c, 0x1a, 0x4b) //purple
+    strip.Color(0x8c, 0x1a, 0x4b)  //purple
   };
+  //get color for console
   char* str = "green yelloworangered   purple";
   strncpy(color, str + ((val -1) *6), 6);
   color[6] = '\0';
   Serial.println(color);
+  //set neoPixels
   for (int i = 0; i < 8; i++) {
     strip.setPixelColor(i, colors[val -1]);
   }
